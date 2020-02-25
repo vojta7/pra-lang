@@ -8,19 +8,30 @@ extern {
     type Error = Error;
 
     enum Token<'input> {
-        ";" => Token::Semi,
-        "bool" => Token::Boolean,
+        // Data
+        string => Token::StringValue(<&'input str>),
+        number => Token::DecLiteral(<i32>),
+        identifier => Token::Ident(<&'input str>),
+
+        // Keywords
         "fn" => Token::Function,
-        "(" => Token::LParen,
-        ")" => Token::RParen,
-        ":" => Token::Colon,
-        "i32" => Token::I32,
-        "String" => Token::String,
-        "{" => Token::LBrace,
-        "}" => Token::RBrace,
-        "=" => Token::Equal,
         "if" => Token::If,
         "else" => Token::Else,
+
+        // Data types
+        "bool" => Token::Boolean,
+        "i32" => Token::I32,
+        "String" => Token::String,
+
+        // true false
+        "true" => Token::True,
+        "false" => Token::False,
+
+        // Symbols
+        ":" => Token::Colon,
+        ";" => Token::Semi,
+        "," => Token::Comma,
+        "=" => Token::Equal,
         "+" => Token::Plus,
         "-" => Token::Minus,
         "*" => Token::Star,
@@ -31,14 +42,12 @@ extern {
         "<=" => Token::LessEqual,
         ">" => Token::Greater,
         ">=" => Token::GreaterEqual,
-        "," => Token::Comma,
 
-        "true" => Token::True,
-        "false" => Token::False,
-
-        string => Token::StringValue(<&'input str>),
-        number => Token::DecLiteral(<i32>),
-        identifier => Token::Ident(<&'input str>),
+        // Delimiters
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "{" => Token::LBrace,
+        "}" => Token::RBrace,
     }
 }
 
