@@ -66,7 +66,7 @@ fn eval(
         }
         Expr::Var(id) => globals
             .get(id)
-            .unwrap_or(locals.get(id).unwrap())
+            .unwrap_or_else(|| locals.get(id).unwrap())
             .value
             .clone(),
         Expr::If(if_expr) => {
@@ -156,5 +156,5 @@ fn main() {
     file.read_to_string(&mut input).unwrap();
     let program = calculator1::ProgramParser::new().parse(&input).unwrap();
     println!("{:#?}", program);
-    let _ = execute(&program, &mut HashMap::new());
+    execute(&program, &mut HashMap::new());
 }
