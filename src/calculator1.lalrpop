@@ -1,0 +1,136 @@
+use std::str::FromStr;
+use crate::ast::{Expr, Opcode, Stmt, Block, Function, Program, Variable, DataType, VarVal, If};
+
+grammar;
+
+pub Program: Program = {
+    <functions:Function*> => Program{
+        functions: functions.iter().map(|f| (f.name.clone(), f.clone())).collect()
+    },
+}
+
+pub Function: Function = {
+    "fn" <id:Identifier> "(" ")" <block:Block> =>
+    {
+        Function{
+            name: id,
+            arguments: Vec::new(),
+            block: block,
+        }
+    },
+    "fn" <id:Identifier> "(" <first:Variable> <rest:("," Variable)*> ")" <block:Block> =>
+    {
+        let mut args = Vec::new();
+        args.push(first);
+        args.append(&mut rest.iter().map(|(_,id)| id.clone()).collect());
+        Function{
+            name: id,
+            arguments: args,
+            block: block,
+        }
+    }
+}
+
+Variable: Variable = {
+    <id:Identifier> ":" <t:DataType> => {
+        Variable {
+            ident: id,
+            value: match t {
+                DataType::I32 => VarVal::I32(None),
+                DataType::STRING => VarVal::STRING(None),
+                DataType::BOOL => VarVal::BOOL(None),
+                DataType::NONE => VarVal::NONE,
+            }
+        }
+    }
+}
+
+DataType: DataType = {
+    "i32" => DataType::I32,
+    "String" => DataType::STRING,
+    "bool" => DataType::BOOL,
+    "()" => DataType::NONE,
+}
+
+pub Block: Block = {
+    "{" <stmts:Stmt*> <expr:Expr> "}" => Block{ statements: stmts, expr: expr },
+}
+
+Stmt: Stmt = {
+    <expr:Expr> ";" => Stmt::Expr(expr),
+    <id:Identifier> "=" <expr:Expr> ";" => Stmt::Asgn(id, expr),
+}
+
+Expr: Box<Expr> = {
+    <id:Identifier> "(" <expr:Expr> <rest:("," Expr)*> ")" => {
+        let mut args = Vec::new();
+        args.push(expr);
+        args.append(&mut rest.iter().map(|(_,exp)| exp.clone()).collect());
+        Box::new(Expr::Function(id, args))
+    },
+    <id:Identifier> "(" ")" => Box::new(Expr::Function(id, Vec::new())),
+    Expr ExprOp Factor => Box::new(Expr::Op(<>)),
+    "if" <expr:Expr> <block:Block> => Box::new(Expr::If(
+        If{
+            condition: expr,
+            if_block: block,
+            else_block: None
+        })),
+    "if" <expr:Expr> <ifblock:Block> "else" <elseblock:Block> => Box::new(Expr::If(
+        If{
+            condition: expr,
+            if_block: ifblock,
+            else_block: Some(elseblock)
+        })),
+    Factor,
+};
+
+ExprOp: Opcode = {
+    "+" => Opcode::Add,
+    "-" => Opcode::Sub,
+    // TODO wrong precedence
+    "==" => Opcode::Eq,
+    "!=" => Opcode::Ne,
+    "<" => Opcode::Lt,
+    "<=" => Opcode::Le,
+    ">" => Opcode::Gt,
+    ">=" => Opcode::Ge,
+};
+
+Factor: Box<Expr> = {
+    Factor FactorOp Term => Box::new(Expr::Op(<>)),
+    Term,
+};
+
+FactorOp: Opcode = {
+    "*" => Opcode::Mul,
+    "/" => Opcode::Div,
+};
+
+Term: Box<Expr> = {
+    Num => Box::new(Expr::Value(VarVal::I32(Some(<>)))),
+    Boolean => Box::new(Expr::Value(VarVal::BOOL(Some(<>)))),
+    String => Box::new(Expr::Value(VarVal::STRING(Some(<>)))),
+    Identifier => Box::new(Expr::Var(<>)),
+    "(" <Expr> ")",
+};
+
+Boolean: bool = {
+    "true" => true,
+    "false" => false,
+}
+
+String: String = {
+    r#""[^"]*""# => {
+        let len = <>.len();
+        <>[1..len-1].to_string()
+    }
+}
+
+Num: i32 = {
+    r"[0-9]+" => i32::from_str(<>).unwrap()
+};
+
+Identifier: String = {
+    r"[a-zA-Z][a-zA-Z_]*" => <>.to_owned()
+}
