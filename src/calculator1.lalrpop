@@ -69,7 +69,7 @@ Expr: Box<Expr> = {
         Box::new(Expr::Function(id, args))
     },
     <id:Identifier> "(" ")" => Box::new(Expr::Function(id, Vec::new())),
-    Expr ExprOp Factor => Box::new(Expr::Op(<>)),
+    Expr ComparisonOp Adition => Box::new(Expr::Op(<>)),
     "if" <expr:Expr> <block:Block> => Box::new(Expr::If(
         If{
             condition: expr,
@@ -82,13 +82,20 @@ Expr: Box<Expr> = {
             if_block: ifblock,
             else_block: Some(elseblock)
         })),
-    Factor,
+    Adition,
 };
 
-ExprOp: Opcode = {
+AditionOp: Opcode = {
     "+" => Opcode::Add,
     "-" => Opcode::Sub,
-    // TODO wrong precedence
+};
+
+FactorOp: Opcode = {
+    "*" => Opcode::Mul,
+    "/" => Opcode::Div,
+};
+
+ComparisonOp: Opcode = {
     "==" => Opcode::Eq,
     "!=" => Opcode::Ne,
     "<" => Opcode::Lt,
@@ -97,14 +104,14 @@ ExprOp: Opcode = {
     ">=" => Opcode::Ge,
 };
 
+Adition: Box<Expr> = {
+    Adition AditionOp Factor => Box::new(Expr::Op(<>)),
+    Factor,
+};
+
 Factor: Box<Expr> = {
     Factor FactorOp Term => Box::new(Expr::Op(<>)),
     Term,
-};
-
-FactorOp: Opcode = {
-    "*" => Opcode::Mul,
-    "/" => Opcode::Div,
 };
 
 Term: Box<Expr> = {
