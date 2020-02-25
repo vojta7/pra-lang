@@ -11,13 +11,13 @@ pub fn buildins() -> HashMap<String, Box<dyn Fn(ArgList) -> VarVal>> {
                     VarVal::I32(Some(v)) => print!("{}", v),
                     VarVal::BOOL(Some(v)) => print!("{}", v),
                     VarVal::STRING(Some(v)) => print!("{}", v),
-                    VarVal::NONE => print!("()"),
+                    VarVal::UNIT => print!("()"),
                     VarVal::ERROR(v) => print!("{}", v),
                     _ => (),
                 }
             }
             println!();
-            VarVal::NONE
+            VarVal::UNIT
         }),
     );
     f

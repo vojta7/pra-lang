@@ -39,7 +39,7 @@ Variable: Variable = {
                 DataType::I32 => VarVal::I32(None),
                 DataType::STRING => VarVal::STRING(None),
                 DataType::BOOL => VarVal::BOOL(None),
-                DataType::NONE => VarVal::NONE,
+                DataType::UNIT => VarVal::UNIT,
             }
         }
     }
@@ -49,7 +49,7 @@ DataType: DataType = {
     "i32" => DataType::I32,
     "String" => DataType::STRING,
     "bool" => DataType::BOOL,
-    "()" => DataType::NONE,
+    "()" => DataType::UNIT,
 }
 
 pub Block: Block = {

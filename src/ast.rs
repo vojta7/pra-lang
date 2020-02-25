@@ -28,7 +28,7 @@ pub enum DataType {
     I32,
     BOOL,
     STRING,
-    NONE,
+    UNIT,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -36,7 +36,7 @@ pub enum VarVal {
     I32(Option<i32>),
     BOOL(Option<bool>),
     STRING(Option<String>),
-    NONE,
+    UNIT,
     ERROR(String),
 }
 

@@ -78,7 +78,7 @@ fn eval(
                     } else if let Some(else_block) = &if_expr.else_block {
                         eval_block(else_block, globals, program, locals)
                     } else {
-                        VarVal::NONE
+                        VarVal::UNIT
                     }
                 }
                 _ => VarVal::ERROR("Expected boolean".to_owned()),
