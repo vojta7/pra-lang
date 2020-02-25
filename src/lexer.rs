@@ -67,7 +67,6 @@ pub enum Token<'input> {
     Comma,        // ,
     Equal,        // =
     EqualEqual,   // ==
-    EqualGreater, // =>
     ForwardSlash, // /
     Greater,      // >
     GreaterEqual, // >=
@@ -154,7 +153,7 @@ impl<'input> Lexer<'input> {
     fn string(&mut self, start: usize) -> (usize, Token<'input>, usize) {
         let (end, content) = self.take_until(start + 1, |ch| ch == '"'); // skip first '"'
         self.bump(); // skip remaining '"'
-        (start, Token::StringValue(content), end)
+        (start, Token::StringValue(content), end + 1)
     }
 
     /// Consume an identifier token
@@ -199,7 +198,6 @@ impl<'input> Iterator for Lexer<'input> {
                         "," => Ok((start, Token::Comma, end)),
                         "=" => Ok((start, Token::Equal, end)),
                         "==" => Ok((start, Token::EqualEqual, end)),
-                        "=>" => Ok((start, Token::EqualGreater, end)),
                         "/" => Ok((start, Token::ForwardSlash, end)),
                         ">" => Ok((start, Token::Greater, end)),
                         ">=" => Ok((start, Token::GreaterEqual, end)),
@@ -230,5 +228,112 @@ impl<'input> Iterator for Lexer<'input> {
         }
 
         None
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn string_lexer() {
+        let input = "\"hello world\"";
+        let tokens: Vec<_> = Lexer::new(input).collect::<Result<_, _>>().unwrap();
+        assert_eq!(
+            tokens,
+            vec![(0, Token::StringValue("hello world"), input.len())]
+        );
+    }
+
+    #[test]
+    fn dec_literal_lexer() {
+        let input = "123";
+        let tokens: Vec<_> = Lexer::new(input).collect::<Result<_, _>>().unwrap();
+        assert_eq!(tokens, vec![(0, Token::DecLiteral(123), input.len())]);
+    }
+
+    #[test]
+    fn comments_lexer() {
+        let input = "// some text 123";
+        let tokens: Vec<_> = Lexer::new(input).collect::<Result<_, _>>().unwrap();
+        assert_eq!(tokens, vec![]);
+    }
+
+    #[test]
+    fn ident_lexer() {
+        let input = "super_duper_variable1";
+        let tokens: Vec<_> = Lexer::new(input).collect::<Result<_, _>>().unwrap();
+        assert_eq!(tokens, vec![(0, Token::Ident(input), input.len())]);
+    }
+
+    #[test]
+    fn brackets_lexer() {
+        let input = "({})";
+        let tokens: Vec<_> = Lexer::new(input)
+            .map(|e| match e {
+                Ok((_, v, _)) => v,
+                _ => unreachable!(),
+            })
+            .collect();
+        assert_eq!(
+            tokens,
+            vec![Token::LParen, Token::LBrace, Token::RBrace, Token::RParen,]
+        );
+    }
+
+    #[test]
+    fn symbol_lexer() {
+        let input = "!  !=  : , = == / > >= < <= - + ;";
+        let tokens: Vec<_> = Lexer::new(input)
+            .map(|e| match e {
+                Ok((_, v, _)) => v,
+                _ => unreachable!(),
+            })
+            .collect();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Bang,
+                Token::BangEqual,
+                Token::Colon,
+                Token::Comma,
+                Token::Equal,
+                Token::EqualEqual,
+                Token::ForwardSlash,
+                Token::Greater,
+                Token::GreaterEqual,
+                Token::Less,
+                Token::LessEqual,
+                Token::Minus,
+                Token::Plus,
+                Token::Semi
+            ]
+        );
+    }
+
+    #[test]
+    fn complex_lexer() {
+        let input = "function(5/3 + 2, variable); //";
+        let tokens: Vec<_> = Lexer::new(input)
+            .map(|e| match e {
+                Ok((_, v, _)) => v,
+                _ => unreachable!(),
+            })
+            .collect();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Ident("function"),
+                Token::LParen,
+                Token::DecLiteral(5),
+                Token::ForwardSlash,
+                Token::DecLiteral(3),
+                Token::Plus,
+                Token::DecLiteral(2),
+                Token::Comma,
+                Token::Ident("variable"),
+                Token::RParen,
+                Token::Semi,
+            ]
+        );
     }
 }
