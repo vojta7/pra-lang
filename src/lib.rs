@@ -4,7 +4,6 @@ pub mod buildin;
 use ast::{ArgList, Block, Expr, Function, Opcode, Program, Stmt, VarVal, Variable};
 use lalrpop_util::lalrpop_mod;
 use std::collections::HashMap;
-use std::io::Read;
 
 lalrpop_mod!(pub calculator1); // synthesized by LALRPOP
 
@@ -131,7 +130,7 @@ fn eval_function(
     eval_block(&function.block, globals, program, &mut locals)
 }
 
-fn execute(program: &Program, globals: &mut HashMap<String, Variable>) {
+pub fn execute(program: &Program, globals: &mut HashMap<String, Variable>) {
     eval_function(
         &program.functions["main"],
         ArgList { args: Vec::new() },
@@ -140,21 +139,6 @@ fn execute(program: &Program, globals: &mut HashMap<String, Variable>) {
     );
 }
 
-fn usage() {
-    eprintln!("program <file>");
-}
-
-fn main() {
-    let mut args = std::env::args();
-    let file = args.nth(1).unwrap_or_else(|| {
-        usage();
-        std::process::exit(1)
-    });
-    let file_path = std::path::Path::new(&file);
-    let mut file = std::fs::File::open(file_path).unwrap();
-    let mut input = String::new();
-    file.read_to_string(&mut input).unwrap();
-    let program = calculator1::ProgramParser::new().parse(&input).unwrap();
-    println!("{:#?}", program);
-    execute(&program, &mut HashMap::new());
+pub fn parse(input: &str) -> Program {
+    calculator1::ProgramParser::new().parse(&input).unwrap() // TODO remove unwrap
 }
