@@ -10,25 +10,18 @@ pub Program: Program = {
 }
 
 pub Function: Function = {
-    "fn" <id:Identifier> "(" ")" <block:Block> =>
+    "fn" <id:Identifier> "(" <variables:(Variable ",")*> <last:(Variable)?> ")" <block:Block> =>
     {
+        let mut variables: Vec<_> = variables.iter().map(|(id,_)| id.clone()).collect();
+        if let Some(last) = last {
+            variables.push(last);
+        }
         Function{
             name: id,
-            arguments: Vec::new(),
+            arguments: variables,
             block: block,
         }
     },
-    "fn" <id:Identifier> "(" <first:Variable> <rest:("," Variable)*> ")" <block:Block> =>
-    {
-        let mut args = Vec::new();
-        args.push(first);
-        args.append(&mut rest.iter().map(|(_,id)| id.clone()).collect());
-        Function{
-            name: id,
-            arguments: args,
-            block: block,
-        }
-    }
 }
 
 Variable: Variable = {
@@ -62,13 +55,13 @@ Stmt: Stmt = {
 }
 
 Expr: Box<Expr> = {
-    <id:Identifier> "(" <expr:Expr> <rest:("," Expr)*> ")" => {
-        let mut args = Vec::new();
-        args.push(expr);
-        args.append(&mut rest.iter().map(|(_,exp)| exp.clone()).collect());
+    <id:Identifier> "(" <expressions:(Expr ",")*> <last:(Expr)?> ")" => {
+        let mut args: Vec<_> = expressions.iter().map(|(id,_)| id.clone()).collect();
+        if let Some(last) = last {
+            args.push(last);
+        }
         Box::new(Expr::Function(id, args))
     },
-    <id:Identifier> "(" ")" => Box::new(Expr::Function(id, Vec::new())),
     Expr ComparisonOp Adition => Box::new(Expr::Op(<>)),
     "if" <expr:Expr> <block:Block> => Box::new(Expr::If(
         If{
