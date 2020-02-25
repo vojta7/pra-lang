@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod buildin;
+mod lexer;
 
 use ast::{ArgList, Block, Expr, Function, Opcode, Program, Stmt, VarVal, Variable};
 use lalrpop_util::lalrpop_mod;
@@ -157,5 +158,12 @@ pub fn execute(
 }
 
 pub fn parse(input: &str) -> Program {
-    calculator1::ProgramParser::new().parse(&input).unwrap() // TODO remove unwrap
+    let lexer = lexer::Lexer::new(input);
+    match calculator1::ProgramParser::new().parse(&input, lexer) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("{:#?}", e);
+            panic!()
+        }
+    }
 }

@@ -1,7 +1,46 @@
-use std::str::FromStr;
 use crate::ast::{Expr, Opcode, Stmt, Block, Function, Program, Variable, DataType, VarVal, If};
+use crate::lexer::{Token, Error};
 
-grammar;
+grammar<'input>(input: &'input str);
+
+extern {
+    type Location = usize;
+    type Error = Error;
+
+    enum Token<'input> {
+        ";" => Token::Semi,
+        "bool" => Token::Boolean,
+        "fn" => Token::Function,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        ":" => Token::Colon,
+        "i32" => Token::I32,
+        "String" => Token::String,
+        "{" => Token::LBrace,
+        "}" => Token::RBrace,
+        "=" => Token::Equal,
+        "if" => Token::If,
+        "else" => Token::Else,
+        "+" => Token::Plus,
+        "-" => Token::Minus,
+        "*" => Token::Star,
+        "/" => Token::ForwardSlash,
+        "==" => Token::EqualEqual,
+        "!=" => Token::BangEqual,
+        "<" => Token::Less,
+        "<=" => Token::LessEqual,
+        ">" => Token::Greater,
+        ">=" => Token::GreaterEqual,
+        "," => Token::Comma,
+
+        "true" => Token::True,
+        "false" => Token::False,
+
+        string => Token::StringValue(<&'input str>),
+        number => Token::DecLiteral(<i32>),
+        identifier => Token::Ident(<&'input str>),
+    }
+}
 
 pub Program: Program = {
     <functions:Function*> => Program{
@@ -38,7 +77,7 @@ DataType: DataType = {
     "i32" => DataType::I32,
     "String" => DataType::STRING,
     "bool" => DataType::BOOL,
-    "()" => DataType::UNIT,
+    "(" ")" => DataType::UNIT,
 }
 
 pub Block: Block = {
@@ -125,16 +164,13 @@ Boolean: bool = {
 }
 
 String: String = {
-    r#""[^"]*""# => {
-        let len = <>.len();
-        <>[1..len-1].to_string()
-    }
+    <n:string> => n.to_string()
 }
 
 Num: i32 = {
-    r"[0-9]+" => i32::from_str(<>).unwrap()
+    <n:number> => n
 };
 
 Identifier: String = {
-    r"[a-zA-Z][a-zA-Z_]*" => <>.to_owned()
+    <n:identifier> => n.to_string()
 }
