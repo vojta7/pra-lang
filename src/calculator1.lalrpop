@@ -10,12 +10,8 @@ pub Program: Program = {
 }
 
 pub Function: Function = {
-    "fn" <id:Identifier> "(" <variables:(Variable ",")*> <last:(Variable)?> ")" <block:Block> =>
+    "fn" <id:Identifier> "(" <variables:Comma<Variable>> ")" <block:Block> =>
     {
-        let mut variables: Vec<_> = variables.iter().map(|(id,_)| id.clone()).collect();
-        if let Some(last) = last {
-            variables.push(last);
-        }
         Function{
             name: id,
             arguments: variables,
@@ -55,11 +51,7 @@ Stmt: Stmt = {
 }
 
 Expr: Box<Expr> = {
-    <id:Identifier> "(" <expressions:(Expr ",")*> <last:(Expr)?> ")" => {
-        let mut args: Vec<_> = expressions.iter().map(|(id,_)| id.clone()).collect();
-        if let Some(last) = last {
-            args.push(last);
-        }
+    <id:Identifier> "(" <args:Comma<Expr>> ")" => {
         Box::new(Expr::Function(id, args))
     },
     Expr ComparisonOp Adition => Box::new(Expr::Op(<>)),
@@ -114,6 +106,18 @@ Term: Box<Expr> = {
     Identifier => Box::new(Expr::Var(<>)),
     "(" <Expr> ")",
 };
+
+// Comma separated list of T, where last comma is optional
+Comma<T>: Vec<T> = {
+    <val:(<T> ",")*> <last:T?> => match last {
+        None => val,
+        Some(last) => {
+            let mut val = val;
+            val.push(last);
+            val
+        }
+    }
+}
 
 Boolean: bool = {
     "true" => true,
