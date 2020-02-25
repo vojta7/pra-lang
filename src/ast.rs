@@ -37,7 +37,6 @@ pub enum VarVal {
     BOOL(Option<bool>),
     STRING(Option<String>),
     UNIT,
-    ERROR(String),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

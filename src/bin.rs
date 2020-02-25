@@ -17,6 +17,9 @@ fn main() {
     let mut input = String::new();
     file.read_to_string(&mut input).unwrap();
     let program = parse(&input);
-    println!("{:#?}", program);
-    execute(&program, &mut HashMap::new());
+    //println!("{:#?}", program);
+    match execute(&program, &mut HashMap::new()) {
+        Ok(_) => (),
+        Err(e) => eprintln!("Runtime error: {:?}", e),
+    }
 }

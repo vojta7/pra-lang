@@ -7,12 +7,22 @@ use std::collections::HashMap;
 
 lalrpop_mod!(pub calculator1); // synthesized by LALRPOP
 
+#[derive(Debug)]
+pub enum RuntimeError {
+    UndefinedVariable,
+    UndefinedFunction(String),
+    InvalidOpcode,
+    InvalidOperands,
+    BooleanExpected,
+    WrongNumberOfArguments,
+}
+
 fn eval(
     expr: &Expr,
     globals: &mut HashMap<String, Variable>,
     program: &Program,
     locals: &mut HashMap<String, Variable>,
-) -> VarVal {
+) -> Result<VarVal, RuntimeError> {
     match expr {
         Expr::Function(name, expr) => {
             let functions = buildin::buildins();
@@ -20,22 +30,22 @@ fn eval(
                 args: expr
                     .iter()
                     .map(|expr| eval(expr, globals, program, locals))
-                    .collect(),
+                    .collect::<Result<_, _>>()?,
             };
             match functions.get(name) {
-                Some(f) => f(arglist),
+                Some(f) => Ok(f(arglist)),
                 None => match program.functions.get(name) {
                     Some(f) => eval_function(&f, arglist, globals, program),
-                    None => VarVal::ERROR("Unknown function".to_owned()),
+                    None => Err(RuntimeError::UndefinedFunction(name.clone())),
                 },
             }
         }
-        Expr::Value(n) => n.clone(),
+        Expr::Value(n) => Ok(n.clone()),
         Expr::Op(lhs, opc, rhs) => {
-            let l = eval(lhs, globals, program, locals);
-            let r = eval(rhs, globals, program, locals);
+            let l = eval(lhs, globals, program, locals)?;
+            let r = eval(rhs, globals, program, locals)?;
             if let (VarVal::I32(Some(l)), VarVal::I32(Some(r))) = (&l, &r) {
-                match opc {
+                Ok(match opc {
                     Opcode::Add => VarVal::I32(Some(l + r)),
                     Opcode::Sub => VarVal::I32(Some(l - r)),
                     Opcode::Mul => VarVal::I32(Some(l * r)),
@@ -46,30 +56,34 @@ fn eval(
                     Opcode::Le => VarVal::BOOL(Some(l <= r)),
                     Opcode::Gt => VarVal::BOOL(Some(l > r)),
                     Opcode::Ge => VarVal::BOOL(Some(l >= r)),
-                }
+                })
             } else if let (VarVal::BOOL(Some(l)), VarVal::BOOL(Some(r))) = (&l, &r) {
                 match opc {
-                    Opcode::Eq => VarVal::BOOL(Some(l == r)),
-                    Opcode::Ne => VarVal::BOOL(Some(l != r)),
-                    _ => VarVal::ERROR("invalid opcode".to_owned()),
+                    Opcode::Eq => Ok(VarVal::BOOL(Some(l == r))),
+                    Opcode::Ne => Ok(VarVal::BOOL(Some(l != r))),
+                    _ => Err(RuntimeError::InvalidOpcode),
                 }
             } else if let (VarVal::STRING(Some(l)), VarVal::STRING(Some(r))) = (&l, &r) {
                 match opc {
-                    Opcode::Eq => VarVal::BOOL(Some(l == r)),
-                    Opcode::Ne => VarVal::BOOL(Some(l != r)),
-                    _ => VarVal::ERROR("invalid opcode".to_owned()),
+                    Opcode::Eq => Ok(VarVal::BOOL(Some(l == r))),
+                    Opcode::Ne => Ok(VarVal::BOOL(Some(l != r))),
+                    _ => Err(RuntimeError::InvalidOpcode),
                 }
             } else {
-                VarVal::ERROR("invalid operands".to_owned())
+                Err(RuntimeError::InvalidOperands)
             }
         }
         Expr::Var(id) => globals
             .get(id)
-            .unwrap_or_else(|| locals.get(id).unwrap())
-            .value
-            .clone(),
+            .map(|v| Ok(v))
+            .unwrap_or_else(|| {
+                locals
+                    .get(id)
+                    .map_or_else(|| Err(RuntimeError::UndefinedVariable), |v| Ok(v))
+            })
+            .map(|v| v.value.clone()),
         Expr::If(if_expr) => {
-            let predicate = eval(&if_expr.condition, globals, program, locals);
+            let predicate = eval(&if_expr.condition, globals, program, locals)?;
             match predicate {
                 VarVal::BOOL(Some(v)) => {
                     if v {
@@ -77,10 +91,10 @@ fn eval(
                     } else if let Some(else_block) = &if_expr.else_block {
                         eval_block(else_block, globals, program, locals)
                     } else {
-                        VarVal::UNIT
+                        Ok(VarVal::UNIT)
                     }
                 }
-                _ => VarVal::ERROR("Expected boolean".to_owned()),
+                _ => Err(RuntimeError::BooleanExpected),
             }
         }
     }
@@ -91,14 +105,14 @@ fn eval_block(
     globals: &mut HashMap<String, Variable>,
     program: &Program,
     locals: &mut HashMap<String, Variable>,
-) -> VarVal {
+) -> Result<VarVal, RuntimeError> {
     for stmt in &block.statements {
         match stmt {
             Stmt::Expr(expr) => {
-                eval(&expr, globals, program, locals);
+                eval(&expr, globals, program, locals)?;
             }
             Stmt::Asgn(id, expr) => {
-                let res = eval(&expr, globals, program, locals);
+                let res = eval(&expr, globals, program, locals)?;
                 locals.insert(
                     id.to_string(),
                     Variable {
@@ -117,10 +131,10 @@ fn eval_function(
     arglist: ArgList,
     globals: &mut HashMap<String, Variable>,
     program: &Program,
-) -> VarVal {
+) -> Result<VarVal, RuntimeError> {
     let mut locals = HashMap::new();
     if arglist.args.len() != function.arguments.len() {
-        return VarVal::ERROR("Wrong number of arguments".to_owned());
+        return Err(RuntimeError::WrongNumberOfArguments);
     }
     for (var, arg_value) in function.arguments.iter().zip(arglist.args.iter()) {
         let mut var = var.clone();
@@ -130,13 +144,16 @@ fn eval_function(
     eval_block(&function.block, globals, program, &mut locals)
 }
 
-pub fn execute(program: &Program, globals: &mut HashMap<String, Variable>) {
+pub fn execute(
+    program: &Program,
+    globals: &mut HashMap<String, Variable>,
+) -> Result<VarVal, RuntimeError> {
     eval_function(
         &program.functions["main"],
         ArgList { args: Vec::new() },
         globals,
         program,
-    );
+    )
 }
 
 pub fn parse(input: &str) -> Program {

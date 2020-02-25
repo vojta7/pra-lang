@@ -12,7 +12,6 @@ pub fn buildins() -> HashMap<String, Box<dyn Fn(ArgList) -> VarVal>> {
                     VarVal::BOOL(Some(v)) => print!("{}", v),
                     VarVal::STRING(Some(v)) => print!("{}", v),
                     VarVal::UNIT => print!("()"),
-                    VarVal::ERROR(v) => print!("{}", v),
                     _ => (),
                 }
             }
