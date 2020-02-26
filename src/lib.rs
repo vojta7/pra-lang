@@ -3,7 +3,7 @@ pub mod buildin;
 mod lexer;
 
 use ast::{ArgList, Block, Expr, Function, Opcode, Program, Stmt, VarVal, Variable};
-use lalrpop_util::lalrpop_mod;
+use lalrpop_util::{lalrpop_mod, ParseError};
 use std::collections::HashMap;
 
 lalrpop_mod!(pub calculator1); // synthesized by LALRPOP
@@ -157,13 +157,53 @@ pub fn execute(
     )
 }
 
-pub fn parse(input: &str) -> Program {
-    let lexer = lexer::Lexer::new(input);
-    match calculator1::ProgramParser::new().parse(&input, lexer) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("{:#?}", e);
-            panic!()
-        }
+#[derive(Debug)]
+pub struct ParsingError {
+    pub from: usize,
+    to: usize,
+    description: String,
+}
+
+fn parsing_err(from: usize, to: usize, description: String) -> ParsingError {
+    ParsingError {
+        from,
+        to,
+        description,
     }
+}
+
+pub fn parse(input: &str) -> Result<Program, ParsingError> {
+    let lexer = lexer::Lexer::new(input);
+    calculator1::ProgramParser::new()
+        .parse(&input, lexer)
+        .map_err(|e| match e {
+            ParseError::User { error } => parsing_err(
+                error.location,
+                error.location + 1,
+                format!("Unexpected character {}", error.char.unwrap_or(' ')),
+            ),
+            ParseError::InvalidToken { location } => {
+                parsing_err(location, location, "invalid token".to_string())
+            }
+            ParseError::UnrecognizedToken {
+                token: (l, token, r),
+                expected,
+            } => parsing_err(
+                l,
+                r,
+                format!(
+                    "unexpected token {:?}, expected {}",
+                    token,
+                    expected.join(",")
+                ),
+            ),
+            ParseError::ExtraToken {
+                token: (l, token, r),
+            } => parsing_err(l, r, format!("extra token '{:?}' encountered", token)),
+            ParseError::UnrecognizedEOF { location, expected } => parsing_err(
+                location,
+                location,
+                format!("unexpected end of file, expecting {}", expected.join(", ")),
+            ),
+        })
 }

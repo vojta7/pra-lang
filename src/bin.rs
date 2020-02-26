@@ -22,15 +22,24 @@ fn main() {
         std::process::exit(1)
     });
     let file_path = Path::new(&file);
+    //let res = load_program(&file_path)
+    //    .map(|program| parse(&program).map(|ast| execute(&ast, &mut HashMap::new())));
+    //if let Err(e) = res {
+    //    eprintln!("{:#?}", e);
+    //}
     match load_program(&file_path) {
         Ok(input) => {
-            let program = parse(&input);
-            //println!("{:#?}", program);
-            match execute(&program, &mut HashMap::new()) {
-                Ok(_) => (),
-                Err(e) => eprintln!("Runtime error: {:?}", e),
+            match parse(&input) {
+                Ok(program) => {
+                    //println!("{:#?}", program);
+                    match execute(&program, &mut HashMap::new()) {
+                        Ok(_) => (),
+                        Err(e) => eprintln!("Runtime error: {:#?}", e),
+                    }
+                }
+                Err(e) => eprintln!("Runtime error: {:#?}", e),
             }
         }
-        Err(e) => eprintln!("OS error: {:?}", e),
+        Err(e) => eprintln!("OS error: {:#?}", e),
     }
 }
