@@ -42,6 +42,9 @@ extern {
         "<=" => Token::LessEqual,
         ">" => Token::Greater,
         ">=" => Token::GreaterEqual,
+        "%" => Token::Percent,
+        "&&" => Token::AmpAmp,
+        "||" => Token::PipePipe,
 
         // Delimiters
         "(" => Token::LParen,
@@ -102,7 +105,7 @@ Expr: Box<Expr> = {
     <id:Identifier> "(" <args:Comma<Expr>> ")" => {
         Box::new(Expr::Function(id, args))
     },
-    Expr ComparisonOp Adition => Box::new(Expr::Op(<>)),
+    Expr OrOp And => Box::new(Expr::Op(<>)),
     "if" <expr:Expr> <block:Block> => Box::new(Expr::If(
         If{
             condition: expr,
@@ -115,7 +118,7 @@ Expr: Box<Expr> = {
             if_block: ifblock,
             else_block: Some(elseblock)
         })),
-    Adition,
+    And,
 };
 
 AditionOp: Opcode = {
@@ -126,6 +129,7 @@ AditionOp: Opcode = {
 FactorOp: Opcode = {
     "*" => Opcode::Mul,
     "/" => Opcode::Div,
+    "%" => Opcode::Mod,
 };
 
 ComparisonOp: Opcode = {
@@ -136,6 +140,24 @@ ComparisonOp: Opcode = {
     ">" => Opcode::Gt,
     ">=" => Opcode::Ge,
 };
+
+AndOp: Opcode = {
+    "&&" => Opcode::And,
+}
+
+OrOp: Opcode = {
+    "||" => Opcode::Or,
+}
+
+And: Box<Expr> = {
+    And AndOp Comparison => Box::new(Expr::Op(<>)),
+    Comparison,
+}
+
+Comparison:  Box<Expr> = {
+    Comparison ComparisonOp Adition => Box::new(Expr::Op(<>)),
+    Adition,
+}
 
 Adition: Box<Expr> = {
     Adition AditionOp Factor => Box::new(Expr::Op(<>)),

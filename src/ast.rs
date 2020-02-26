@@ -71,6 +71,7 @@ pub enum Expr {
 pub enum Opcode {
     Mul,
     Div,
+    Mod,
     Add,
     Sub,
     Eq,
@@ -79,4 +80,6 @@ pub enum Opcode {
     Le,
     Gt,
     Ge,
+    And,
+    Or,
 }

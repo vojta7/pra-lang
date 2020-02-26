@@ -2,7 +2,9 @@ use std::str::CharIndices;
 
 fn is_symbol(ch: char) -> bool {
     match ch {
-        '!' | ':' | ',' | '.' | '=' | '/' | '>' | '<' | '-' | '+' | ';' | '*' => true,
+        '|' | '&' | '%' | '!' | ':' | ',' | '.' | '=' | '/' | '>' | '<' | '-' | '+' | ';' | '*' => {
+            true
+        }
         _ => false,
     }
 }
@@ -76,6 +78,9 @@ pub enum Token<'input> {
     Plus,         // +
     Semi,         // ;
     Star,         // *
+    Percent,      // %
+    AmpAmp,       // &&
+    PipePipe,     // ||
 
     // Delimiters
     LParen, // (
@@ -207,6 +212,9 @@ impl<'input> Iterator for Lexer<'input> {
                         "+" => Ok((start, Token::Plus, end)),
                         ";" => Ok((start, Token::Semi, end)),
                         "*" => Ok((start, Token::Star, end)),
+                        "%" => Ok((start, Token::Percent, end)),
+                        "&&" => Ok((start, Token::AmpAmp, end)),
+                        "||" => Ok((start, Token::PipePipe, end)),
                         symbol if symbol.starts_with("//") => {
                             // Line comments
                             self.take_until(start, |ch| ch == '\n');
@@ -282,7 +290,7 @@ mod test {
 
     #[test]
     fn symbol_lexer() {
-        let input = "!  !=  : , = == / > >= < <= - + ;";
+        let input = "!  !=  : , = == / > >= < <= - + ; % && ||";
         let tokens: Vec<_> = Lexer::new(input)
             .map(|e| match e {
                 Ok((_, v, _)) => v,
@@ -305,7 +313,10 @@ mod test {
                 Token::LessEqual,
                 Token::Minus,
                 Token::Plus,
-                Token::Semi
+                Token::Semi,
+                Token::Percent,
+                Token::AmpAmp,
+                Token::PipePipe,
             ]
         );
     }

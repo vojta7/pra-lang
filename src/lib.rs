@@ -46,22 +46,26 @@ fn eval(
             let l = eval(lhs, globals, program, locals)?;
             let r = eval(rhs, globals, program, locals)?;
             if let (VarVal::I32(Some(l)), VarVal::I32(Some(r))) = (&l, &r) {
-                Ok(match opc {
-                    Opcode::Add => VarVal::I32(Some(l + r)),
-                    Opcode::Sub => VarVal::I32(Some(l - r)),
-                    Opcode::Mul => VarVal::I32(Some(l * r)),
-                    Opcode::Div => VarVal::I32(Some(l / r)),
-                    Opcode::Eq => VarVal::BOOL(Some(l == r)),
-                    Opcode::Ne => VarVal::BOOL(Some(l != r)),
-                    Opcode::Lt => VarVal::BOOL(Some(l < r)),
-                    Opcode::Le => VarVal::BOOL(Some(l <= r)),
-                    Opcode::Gt => VarVal::BOOL(Some(l > r)),
-                    Opcode::Ge => VarVal::BOOL(Some(l >= r)),
-                })
+                match opc {
+                    Opcode::Add => Ok(VarVal::I32(Some(l + r))),
+                    Opcode::Sub => Ok(VarVal::I32(Some(l - r))),
+                    Opcode::Mul => Ok(VarVal::I32(Some(l * r))),
+                    Opcode::Div => Ok(VarVal::I32(Some(l / r))),
+                    Opcode::Mod => Ok(VarVal::I32(Some(l % r))),
+                    Opcode::Eq => Ok(VarVal::BOOL(Some(l == r))),
+                    Opcode::Ne => Ok(VarVal::BOOL(Some(l != r))),
+                    Opcode::Lt => Ok(VarVal::BOOL(Some(l < r))),
+                    Opcode::Le => Ok(VarVal::BOOL(Some(l <= r))),
+                    Opcode::Gt => Ok(VarVal::BOOL(Some(l > r))),
+                    Opcode::Ge => Ok(VarVal::BOOL(Some(l >= r))),
+                    _ => Err(RuntimeError::InvalidOpcode),
+                }
             } else if let (VarVal::BOOL(Some(l)), VarVal::BOOL(Some(r))) = (&l, &r) {
                 match opc {
                     Opcode::Eq => Ok(VarVal::BOOL(Some(l == r))),
                     Opcode::Ne => Ok(VarVal::BOOL(Some(l != r))),
+                    Opcode::And => Ok(VarVal::BOOL(Some(*l && *r))),
+                    Opcode::Or => Ok(VarVal::BOOL(Some(*l || *r))),
                     _ => Err(RuntimeError::InvalidOpcode),
                 }
             } else if let (VarVal::STRING(Some(l)), VarVal::STRING(Some(r))) = (&l, &r) {
