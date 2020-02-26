@@ -4,6 +4,7 @@ mod lexer;
 
 use ast::{ArgList, Block, Expr, Function, Opcode, Program, Stmt, VarVal, Variable};
 use lalrpop_util::{lalrpop_mod, ParseError};
+use serde::Serialize;
 use std::collections::HashMap;
 
 lalrpop_mod!(pub calculator1); // synthesized by LALRPOP
@@ -161,11 +162,11 @@ pub fn execute(
     )
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ParsingError {
     pub from: usize,
-    to: usize,
-    description: String,
+    pub to: usize,
+    pub description: String,
 }
 
 fn parsing_err(from: usize, to: usize, description: String) -> ParsingError {
