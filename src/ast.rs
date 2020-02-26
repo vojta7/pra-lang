@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug, Eq, PartialEq, Serialize)]
 pub struct ArgList {
@@ -38,6 +39,25 @@ pub enum VarVal {
     BOOL(Option<bool>),
     STRING(Option<String>),
     UNIT,
+}
+
+impl fmt::Display for VarVal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let VarVal::UNIT = self {
+            write!(f, "()")
+        } else {
+            write!(
+                f,
+                "{}",
+                match self {
+                    VarVal::I32(Some(v)) => v.to_string(),
+                    VarVal::BOOL(Some(v)) => v.to_string(),
+                    VarVal::STRING(Some(v)) => v.clone(),
+                    _ => "null".to_string(),
+                }
+            )
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize)]

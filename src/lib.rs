@@ -2,14 +2,15 @@ pub mod ast;
 pub mod buildin;
 mod lexer;
 
-use ast::{ArgList, Block, Expr, Function, Opcode, Program, Stmt, VarVal, Variable};
+pub use ast::{ArgList, Block, Expr, Function, Opcode, Program, Stmt, VarVal, Variable};
 use lalrpop_util::{lalrpop_mod, ParseError};
+pub use lexer::{Error as LexerError, Lexer, Token};
 use serde::Serialize;
 use std::collections::HashMap;
 
 lalrpop_mod!(pub parser); // synthesized by LALRPOP
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum RuntimeError {
     UndefinedVariable,
     UndefinedFunction(String),

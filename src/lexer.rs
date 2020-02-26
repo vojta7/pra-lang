@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::str::CharIndices;
 
 fn is_symbol(ch: char) -> bool {
@@ -28,7 +29,7 @@ fn is_dec_digit(ch: char) -> bool {
 }
 
 /// An error that occurred while lexing the source file
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Error {
     /// The location where the lexer error occured
     pub location: usize,
@@ -41,7 +42,7 @@ fn error<T>(location: usize, char: Option<char>) -> Result<T, Error> {
 }
 
 /// A token in the source file, to be emitted by the `Lexer`
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub enum Token<'input> {
     // Data
     Ident(&'input str),
