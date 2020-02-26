@@ -19,3 +19,4 @@ lalrpop = "0.17.2"
 
 [dependencies]
 lalrpop-util = "0.17.2"
+serde = "1.0.104"

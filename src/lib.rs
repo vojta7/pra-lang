@@ -7,7 +7,7 @@ use lalrpop_util::{lalrpop_mod, ParseError};
 use serde::Serialize;
 use std::collections::HashMap;
 
-lalrpop_mod!(pub calculator1); // synthesized by LALRPOP
+lalrpop_mod!(pub parser); // synthesized by LALRPOP
 
 #[derive(Debug)]
 pub enum RuntimeError {
@@ -179,7 +179,7 @@ fn parsing_err(from: usize, to: usize, description: String) -> ParsingError {
 
 pub fn parse(input: &str) -> Result<Program, ParsingError> {
     let lexer = lexer::Lexer::new(input);
-    calculator1::ProgramParser::new()
+    parser::ProgramParser::new()
         .parse(&input, lexer)
         .map_err(|e| match e {
             ParseError::User { error } => parsing_err(
