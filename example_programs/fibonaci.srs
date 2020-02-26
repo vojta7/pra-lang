@@ -1,0 +1,24 @@
+fn fib(n: i32) {
+    res = 1;
+    s = 0;
+    if ( n > 2 ) {
+        res = fib( n - 1 );
+        s = fib( n - 2 );
+        0
+    };
+    res + s
+}
+
+fn print_fibs_up_to_n(n: i32) {
+    if n > 1 {
+        print_fibs_up_to_n( n - 1 );
+        0
+    };
+    print( n, ": ", fib( n ) )
+}
+
+fn main() {
+    print_fibs_up_to_n( 15 );
+    0
+}
+

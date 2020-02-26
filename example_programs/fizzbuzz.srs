@@ -1,0 +1,30 @@
+// print fizz buzz for given number
+fn print_fizzbuzz(n: i32) {
+    mod3 = n % 3 == 0;
+    mod5 = n % 5 == 0;
+    if mod3 && mod5 {
+        print("Fizz Buzz")
+    } else {
+        if mod3 {
+            print("Fizz")
+        } else {
+            if mod5 {
+                print("Buzz")
+            } else {
+                print(n)
+            }
+        }
+    }
+}
+
+// print fizz buzz from current to stop
+fn fizzbuzz(current: i32, stop: i32) {
+    if current <= stop {
+        print_fizzbuzz(current);
+        fizzbuzz(current+1, stop)
+    }
+}
+
+fn main() {
+    fizzbuzz(1, 100)
+}
