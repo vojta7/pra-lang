@@ -6,17 +6,33 @@ use lalrpop_util::{lalrpop_mod, ParseError};
 pub use lexer::{Error as LexerError, Lexer, Token};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt;
 
 lalrpop_mod!(pub parser); // synthesized by LALRPOP
 
 #[derive(Debug, Serialize)]
 pub enum RuntimeError {
-    UndefinedVariable,
+    UndefinedVariable(String),
     UndefinedFunction(String),
     InvalidOpcode,
     InvalidOperands,
     BooleanExpected,
-    WrongNumberOfArguments,
+    WrongNumberOfArguments(String),
+    NoMain,
+}
+
+impl fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UndefinedFunction(name) => write!(f, "Undefined function {}", name),
+            Self::UndefinedVariable(name) => write!(f, "Undefined variable {}", name),
+            Self::WrongNumberOfArguments(name) => write!(f, "Wrong number of arguments {}", name),
+            Self::InvalidOperands => write!(f, "Invalid operands"),
+            Self::InvalidOpcode => write!(f, "Invalid opcode"),
+            Self::BooleanExpected => write!(f, "Expected Boolean value"),
+            Self::NoMain => write!(f, "Function main was't found"),
+        }
+    }
 }
 
 pub type Buildins<'a> = HashMap<String, Box<dyn FnMut(ArgList) -> VarVal + 'a>>;
@@ -86,9 +102,10 @@ fn eval(
             .get(id)
             .map(|v| Ok(v))
             .unwrap_or_else(|| {
-                locals
-                    .get(id)
-                    .map_or_else(|| Err(RuntimeError::UndefinedVariable), |v| Ok(v))
+                locals.get(id).map_or_else(
+                    || Err(RuntimeError::UndefinedVariable(id.clone())),
+                    |v| Ok(v),
+                )
             })
             .map(|v| v.value.clone()),
         Expr::If(if_expr) => {
@@ -145,7 +162,7 @@ fn eval_function(
 ) -> Result<VarVal, RuntimeError> {
     let mut locals = HashMap::new();
     if arglist.args.len() != function.arguments.len() {
-        return Err(RuntimeError::WrongNumberOfArguments);
+        return Err(RuntimeError::WrongNumberOfArguments(function.name.clone()));
     }
     for (var, arg_value) in function.arguments.iter().zip(arglist.args.iter()) {
         let mut var = var.clone();
@@ -160,13 +177,17 @@ pub fn execute(
     globals: &mut HashMap<String, Variable>,
     buildins: &mut Buildins,
 ) -> Result<VarVal, RuntimeError> {
-    eval_function(
-        &program.functions["main"],
-        ArgList { args: Vec::new() },
-        globals,
-        program,
-        buildins,
-    )
+    if let Some(main) = program.functions.get("main") {
+        eval_function(
+            main,
+            ArgList { args: Vec::new() },
+            globals,
+            program,
+            buildins,
+        )
+    } else {
+        Err(RuntimeError::NoMain)
+    }
 }
 
 #[derive(Debug, Serialize)]
