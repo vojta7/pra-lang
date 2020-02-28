@@ -1,4 +1,4 @@
-use crate::ast::{Expr, Opcode, Stmt, Block, Function, Program, Variable, DataType, VarVal, If};
+use crate::ast::{Expr, Opcode, Stmt, Block, Function, Program, Variable, DataType, VarVal, If, ExprType};
 use crate::lexer::{Token, Error};
 
 grammar<'input>(input: &'input str);
@@ -61,9 +61,10 @@ pub Program: Program = {
 }
 
 pub Function: Function = {
-    "fn" <id:Identifier> "(" <variables:Comma<Variable>> ")" <block:Block> =>
+    <position:@L> "fn" <id:Identifier> "(" <variables:Comma<Variable>> ")" <block:Block> =>
     {
         Function{
+            position,
             name: id,
             arguments: variables,
             block: block,
@@ -102,22 +103,41 @@ Stmt: Stmt = {
 }
 
 Expr: Box<Expr> = {
-    <id:Identifier> "(" <args:Comma<Expr>> ")" => {
-        Box::new(Expr::Function(id, args))
-    },
-    Expr OrOp And => Box::new(Expr::Op(<>)),
-    "if" <expr:Expr> <block:Block> => Box::new(Expr::If(
-        If{
-            condition: expr,
-            if_block: block,
-            else_block: None
-        })),
-    "if" <expr:Expr> <ifblock:Block> "else" <elseblock:Block> => Box::new(Expr::If(
-        If{
-            condition: expr,
-            if_block: ifblock,
-            else_block: Some(elseblock)
-        })),
+    <position:@L> <id:Identifier> "(" <args:Comma<Expr>> ")" => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Function(id, args)
+        }
+    ),
+    <position:@L> <lhs:Expr> <op:OrOp> <rhs:And> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Op(lhs,op,rhs)
+        }
+    ),
+    <position:@L> "if" <expr:Expr> <block:Block> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::If(
+                If{
+                    condition: expr,
+                    if_block: block,
+                    else_block: None
+                })
+        }
+    ),
+    <position:@L> "if" <expr:Expr> <ifblock:Block> "else" <elseblock:Block> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::If(
+                If{
+                    condition: expr,
+                    if_block: ifblock,
+                    else_block: Some(elseblock)
+                }
+            )
+        }
+    ),
     And,
 };
 
@@ -150,30 +170,70 @@ OrOp: Opcode = {
 }
 
 And: Box<Expr> = {
-    And AndOp Comparison => Box::new(Expr::Op(<>)),
+    <position:@L> <lhs:And> <op:AndOp> <rhs:Comparison> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Op(lhs,op,rhs)
+        }
+    ),
     Comparison,
 }
 
 Comparison:  Box<Expr> = {
-    Comparison ComparisonOp Adition => Box::new(Expr::Op(<>)),
+    <position:@L> <lhs:Comparison> <op:ComparisonOp> <rhs:Adition> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Op(lhs,op,rhs)
+        }
+    ),
     Adition,
 }
 
 Adition: Box<Expr> = {
-    Adition AditionOp Factor => Box::new(Expr::Op(<>)),
+    <position: @L> <lhs:Adition> <op:AditionOp> <rhs:Factor> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Op(lhs,op,rhs)
+        }
+    ),
     Factor,
 };
 
 Factor: Box<Expr> = {
-    Factor FactorOp Term => Box::new(Expr::Op(<>)),
+    <position:@L> <lhs:Factor> <op:FactorOp> <rhs:Term> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Op(lhs,op,rhs)
+        }
+    ),
     Term,
 };
 
 Term: Box<Expr> = {
-    Num => Box::new(Expr::Value(VarVal::I32(Some(<>)))),
-    Boolean => Box::new(Expr::Value(VarVal::BOOL(Some(<>)))),
-    String => Box::new(Expr::Value(VarVal::STRING(Some(<>)))),
-    Identifier => Box::new(Expr::Var(<>)),
+    <position:@L> <n:Num> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Value(VarVal::I32(Some(n)))
+        }
+    ),
+    <position:@L> <b:Boolean> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Value(VarVal::BOOL(Some(b)))
+        }
+    ),
+    <position:@L> <s:String> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Value(VarVal::STRING(Some(s)))
+        }
+    ),
+    <position:@L> <id:Identifier> => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Var(id)
+        }
+    ),
     "(" <Expr> ")",
 };
 

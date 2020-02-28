@@ -1,7 +1,7 @@
 pub mod ast;
 mod lexer;
 
-pub use ast::{ArgList, Block, Expr, Function, Opcode, Program, Stmt, VarVal, Variable};
+pub use ast::{ArgList, Block, Expr, ExprType, Function, Opcode, Program, Stmt, VarVal, Variable};
 use lalrpop_util::{lalrpop_mod, ParseError};
 pub use lexer::{Error as LexerError, Lexer, Token};
 use serde::Serialize;
@@ -11,7 +11,12 @@ use std::fmt;
 lalrpop_mod!(pub parser); // synthesized by LALRPOP
 
 #[derive(Debug, Serialize)]
-pub enum RuntimeError {
+pub struct RuntimeError {
+    pub position: usize,
+    pub error_type: RuntimeErrorType,
+}
+#[derive(Debug, Serialize)]
+pub enum RuntimeErrorType {
     UndefinedVariable(String),
     UndefinedFunction(String),
     InvalidOpcode,
@@ -21,17 +26,26 @@ pub enum RuntimeError {
     NoMain,
 }
 
-impl fmt::Display for RuntimeError {
+impl fmt::Display for RuntimeErrorType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UndefinedFunction(name) => write!(f, "Undefined function {}", name),
-            Self::UndefinedVariable(name) => write!(f, "Undefined variable {}", name),
-            Self::WrongNumberOfArguments(name) => write!(f, "Wrong number of arguments {}", name),
-            Self::InvalidOperands => write!(f, "Invalid operands"),
-            Self::InvalidOpcode => write!(f, "Invalid opcode"),
-            Self::BooleanExpected => write!(f, "Expected Boolean value"),
-            Self::NoMain => write!(f, "Function main was't found"),
+        match &self {
+            RuntimeErrorType::UndefinedFunction(name) => write!(f, "Undefined function {}", name),
+            RuntimeErrorType::UndefinedVariable(name) => write!(f, "Undefined variable {}", name),
+            RuntimeErrorType::WrongNumberOfArguments(name) => {
+                write!(f, "Wrong number of arguments {}", name)
+            }
+            RuntimeErrorType::InvalidOperands => write!(f, "Invalid operands"),
+            RuntimeErrorType::InvalidOpcode => write!(f, "Invalid opcode"),
+            RuntimeErrorType::BooleanExpected => write!(f, "Expected Boolean value"),
+            RuntimeErrorType::NoMain => write!(f, "Function main was't found"),
         }
+    }
+}
+
+fn error(error_type: RuntimeErrorType, position: usize) -> RuntimeError {
+    RuntimeError {
+        error_type,
+        position,
     }
 }
 
@@ -44,10 +58,10 @@ fn eval(
     locals: &mut HashMap<String, Variable>,
     buildins: &mut Buildins,
 ) -> Result<VarVal, RuntimeError> {
-    match expr {
-        Expr::Function(name, expr) => {
+    match &expr.expression_type {
+        ExprType::Function(name, expr_list) => {
             let arglist = ArgList {
-                args: expr
+                args: expr_list
                     .iter()
                     .map(|expr| eval(expr, globals, program, locals, buildins))
                     .collect::<Result<_, _>>()?,
@@ -57,14 +71,17 @@ fn eval(
             } else {
                 match program.functions.get(name) {
                     Some(f) => eval_function(&f, arglist, globals, program, buildins),
-                    None => Err(RuntimeError::UndefinedFunction(name.clone())),
+                    None => Err(error(
+                        RuntimeErrorType::UndefinedFunction(name.clone()),
+                        expr.position,
+                    )),
                 }
             }
         }
-        Expr::Value(n) => Ok(n.clone()),
-        Expr::Op(lhs, opc, rhs) => {
-            let l = eval(lhs, globals, program, locals, buildins)?;
-            let r = eval(rhs, globals, program, locals, buildins)?;
+        ExprType::Value(n) => Ok(n.clone()),
+        ExprType::Op(lhs, opc, rhs) => {
+            let l = eval(&lhs, globals, program, locals, buildins)?;
+            let r = eval(&rhs, globals, program, locals, buildins)?;
             if let (VarVal::I32(Some(l)), VarVal::I32(Some(r))) = (&l, &r) {
                 match opc {
                     Opcode::Add => Ok(VarVal::I32(Some(l + r))),
@@ -78,7 +95,7 @@ fn eval(
                     Opcode::Le => Ok(VarVal::BOOL(Some(l <= r))),
                     Opcode::Gt => Ok(VarVal::BOOL(Some(l > r))),
                     Opcode::Ge => Ok(VarVal::BOOL(Some(l >= r))),
-                    _ => Err(RuntimeError::InvalidOpcode),
+                    _ => Err(error(RuntimeErrorType::InvalidOpcode, expr.position)),
                 }
             } else if let (VarVal::BOOL(Some(l)), VarVal::BOOL(Some(r))) = (&l, &r) {
                 match opc {
@@ -86,29 +103,34 @@ fn eval(
                     Opcode::Ne => Ok(VarVal::BOOL(Some(l != r))),
                     Opcode::And => Ok(VarVal::BOOL(Some(*l && *r))),
                     Opcode::Or => Ok(VarVal::BOOL(Some(*l || *r))),
-                    _ => Err(RuntimeError::InvalidOpcode),
+                    _ => Err(error(RuntimeErrorType::InvalidOpcode, expr.position)),
                 }
             } else if let (VarVal::STRING(Some(l)), VarVal::STRING(Some(r))) = (&l, &r) {
                 match opc {
                     Opcode::Eq => Ok(VarVal::BOOL(Some(l == r))),
                     Opcode::Ne => Ok(VarVal::BOOL(Some(l != r))),
-                    _ => Err(RuntimeError::InvalidOpcode),
+                    _ => Err(error(RuntimeErrorType::InvalidOpcode, expr.position)),
                 }
             } else {
-                Err(RuntimeError::InvalidOperands)
+                Err(error(RuntimeErrorType::InvalidOperands, expr.position))
             }
         }
-        Expr::Var(id) => globals
+        ExprType::Var(id) => globals
             .get(id)
             .map(|v| Ok(v))
             .unwrap_or_else(|| {
                 locals.get(id).map_or_else(
-                    || Err(RuntimeError::UndefinedVariable(id.clone())),
+                    || {
+                        Err(error(
+                            RuntimeErrorType::UndefinedVariable(id.clone()),
+                            expr.position,
+                        ))
+                    },
                     |v| Ok(v),
                 )
             })
             .map(|v| v.value.clone()),
-        Expr::If(if_expr) => {
+        ExprType::If(if_expr) => {
             let predicate = eval(&if_expr.condition, globals, program, locals, buildins)?;
             match predicate {
                 VarVal::BOOL(Some(v)) => {
@@ -120,7 +142,7 @@ fn eval(
                         Ok(VarVal::UNIT)
                     }
                 }
-                _ => Err(RuntimeError::BooleanExpected),
+                _ => Err(error(RuntimeErrorType::BooleanExpected, expr.position)),
             }
         }
     }
@@ -162,7 +184,10 @@ fn eval_function(
 ) -> Result<VarVal, RuntimeError> {
     let mut locals = HashMap::new();
     if arglist.args.len() != function.arguments.len() {
-        return Err(RuntimeError::WrongNumberOfArguments(function.name.clone()));
+        return Err(error(
+            RuntimeErrorType::WrongNumberOfArguments(function.name.clone()),
+            function.position,
+        ));
     }
     for (var, arg_value) in function.arguments.iter().zip(arglist.args.iter()) {
         let mut var = var.clone();
@@ -186,7 +211,7 @@ pub fn execute(
             buildins,
         )
     } else {
-        Err(RuntimeError::NoMain)
+        Err(error(RuntimeErrorType::NoMain, 0))
     }
 }
 

@@ -14,6 +14,7 @@ pub struct Program {
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize)]
 pub struct Function {
+    pub position: usize,
     pub arguments: Vec<Variable>,
     pub name: String,
     pub block: Block,
@@ -80,7 +81,13 @@ pub struct If {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize)]
-pub enum Expr {
+pub struct Expr {
+    pub position: usize,
+    pub expression_type: ExprType,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Serialize)]
+pub enum ExprType {
     Var(String),
     Value(VarVal),
     Op(Box<Expr>, Opcode, Box<Expr>),
