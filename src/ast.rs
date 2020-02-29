@@ -77,7 +77,14 @@ pub enum Stmt {
 pub struct If {
     pub condition: Box<Expr>,
     pub if_block: Block,
-    pub else_block: Option<Block>,
+    pub else_part: Else,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Serialize)]
+pub enum Else {
+    Else(Block),
+    ElseIf(Box<If>),
+    None,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize)]

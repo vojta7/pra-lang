@@ -1,7 +1,9 @@
 pub mod ast;
 mod lexer;
 
-pub use ast::{ArgList, Block, Expr, ExprType, Function, Opcode, Program, Stmt, VarVal, Variable};
+pub use ast::{
+    ArgList, Block, Else, Expr, ExprType, Function, If, Opcode, Program, Stmt, VarVal, Variable,
+};
 use lalrpop_util::{lalrpop_mod, ParseError};
 pub use lexer::{Error as LexerError, Lexer, Token};
 use serde::Serialize;
@@ -131,20 +133,35 @@ fn eval(
             })
             .map(|v| v.value.clone()),
         ExprType::If(if_expr) => {
-            let predicate = eval(&if_expr.condition, globals, program, locals, buildins)?;
-            match predicate {
-                VarVal::BOOL(Some(v)) => {
-                    if v {
-                        eval_block(&if_expr.if_block, globals, program, locals, buildins)
-                    } else if let Some(else_block) = &if_expr.else_block {
-                        eval_block(else_block, globals, program, locals, buildins)
-                    } else {
-                        Ok(VarVal::UNIT)
+            eval_if(if_expr, globals, program, locals, buildins, expr.position)
+        }
+    }
+}
+
+fn eval_if(
+    if_expr: &If,
+    globals: &mut HashMap<String, Variable>,
+    program: &Program,
+    locals: &mut HashMap<String, Variable>,
+    buildins: &mut Buildins,
+    position: usize,
+) -> Result<VarVal, RuntimeError> {
+    let predicate = eval(&if_expr.condition, globals, program, locals, buildins)?;
+    match predicate {
+        VarVal::BOOL(Some(v)) => {
+            if v {
+                eval_block(&if_expr.if_block, globals, program, locals, buildins)
+            } else {
+                match &if_expr.else_part {
+                    Else::Else(block) => eval_block(block, globals, program, locals, buildins),
+                    Else::ElseIf(next_if) => {
+                        eval_if(&**next_if, globals, program, locals, buildins, position)
                     }
+                    Else::None => Ok(VarVal::UNIT),
                 }
-                _ => Err(error(RuntimeErrorType::BooleanExpected, expr.position)),
             }
         }
+        _ => Err(error(RuntimeErrorType::BooleanExpected, position)),
     }
 }
 

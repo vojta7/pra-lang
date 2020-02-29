@@ -4,15 +4,13 @@ fn print_fizzbuzz(n: i32) {
     mod5 = n % 5 == 0;
     if mod3 && mod5 {
         print("Fizz Buzz")
-    } else {
-        if mod3 {
+    } else if mod3 {
             print("Fizz")
+    } else {
+        if mod5 {
+            print("Buzz")
         } else {
-            if mod5 {
-                print("Buzz")
-            } else {
-                print(n)
-            }
+            print(n)
         }
     }
 }

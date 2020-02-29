@@ -1,4 +1,4 @@
-use crate::ast::{Expr, Opcode, Stmt, Block, Function, Program, Variable, DataType, VarVal, If, ExprType};
+use crate::ast::{Expr, Opcode, Stmt, Block, Function, Program, Variable, DataType, VarVal, If, ExprType, Else};
 use crate::lexer::{Token, Error};
 
 grammar<'input>(input: &'input str);
@@ -115,31 +115,35 @@ Expr: Box<Expr> = {
             expression_type: ExprType::Op(lhs,op,rhs)
         }
     ),
-    <position:@L> "if" <expr:Expr> <block:Block> => Box::new(
+    <position:@L> <ifexpr:If> => Box::new(
         Expr{
             position,
-            expression_type: ExprType::If(
-                If{
-                    condition: expr,
-                    if_block: block,
-                    else_block: None
-                })
-        }
-    ),
-    <position:@L> "if" <expr:Expr> <ifblock:Block> "else" <elseblock:Block> => Box::new(
-        Expr{
-            position,
-            expression_type: ExprType::If(
-                If{
-                    condition: expr,
-                    if_block: ifblock,
-                    else_block: Some(elseblock)
-                }
-            )
+            expression_type: ExprType::If(ifexpr)
         }
     ),
     And,
 };
+
+If: If = {
+    "if" <expr:Expr> <block:Block> =>
+        If{
+            condition: expr,
+            if_block: block,
+            else_part: Else::None,
+        },
+    "if" <expr:Expr> <ifblock:Block> "else" <elseblock:Block> =>
+        If{
+            condition: expr,
+            if_block: ifblock,
+            else_part: Else::Else(elseblock)
+        },
+    "if" <expr:Expr> <ifblock:Block> "else" <ifexpr:If> =>
+        If{
+            condition: expr,
+            if_block: ifblock,
+            else_part: Else::ElseIf(Box::new(ifexpr))
+        }
+}
 
 AditionOp: Opcode = {
     "+" => Opcode::Add,
