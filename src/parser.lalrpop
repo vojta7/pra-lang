@@ -103,12 +103,6 @@ Stmt: Stmt = {
 }
 
 Expr: Box<Expr> = {
-    <position:@L> <id:Identifier> "(" <args:Comma<Expr>> ")" => Box::new(
-        Expr{
-            position,
-            expression_type: ExprType::Function(id, args)
-        }
-    ),
     <position:@L> <lhs:Expr> <op:OrOp> <rhs:And> => Box::new(
         Expr{
             position,
@@ -236,6 +230,12 @@ Term: Box<Expr> = {
         Expr{
             position,
             expression_type: ExprType::Var(id)
+        }
+    ),
+    <position:@L> <id:Identifier> "(" <args:Comma<Expr>> ")" => Box::new(
+        Expr{
+            position,
+            expression_type: ExprType::Function(id, args)
         }
     ),
     "(" <Expr> ")",
